@@ -1,0 +1,28 @@
+EndoTree {
+    background: black;
+    color: yellow
+}
+
+.hide {
+    display: none;
+}
+
+ListItem {
+    padding: 1;
+    margin: 1;
+}
+
+#random-inbox-items {
+    height: auto
+}
+
+ButtonsContainer {
+    max-height: 5;
+}
+
+HorizontalContainer
+
+ButtonsContainer Button {
+    width: 1fr;
+    margin: 1;
+}
