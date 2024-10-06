@@ -1,6 +1,6 @@
 from textual.app import App, ComposeResult
 from textual import events, on
-from textual.containers import Horizontal, ScrollableContainer, Container, Vertical
+from textual.containers import *
 from textual.widgets import *
 import json, random
 
@@ -40,7 +40,16 @@ class HorizontalContainer(Horizontal):
     pass
 
 
+class ProjectsTree(Tree):
+    pass
+
+
+class ProjectsTextArea(TextArea):
+    pass
+
+
 class EndoTree(App):
+    # INIT
     CSS_PATH = "styles.tcss"
     BINDINGS= [
         ("a", "add_task_to_inbox", "Display input"),
@@ -48,17 +57,17 @@ class EndoTree(App):
     ]
 
     def compose(self) -> ComposeResult:
-        with TabbedContent(initial="projects"):
-            with TabPane("Nieprzetworzone zadania", id="inbox"):
+        with TabbedContent(initial="projects_tab"):
+            with TabPane("Nieprzetworzone zadania", id="inbox_tab"):
                 yield Input(
                     placeholder="Co chcesz dodać?",
-                    id="add-to-inbox-input"
+                    id="inbox-input"
                 )
-                yield InboxList(id="tasks-list")
+                yield InboxList(id="inbox-list")
 
-            with TabPane("Przegląd", id="review", disabled=True):
+            with TabPane("Przegląd", id="review_tab", disabled=True):
                 yield Label("Automatycznie wylosowany element listy inbox:")
-                yield ListView(id="random-inbox-items")
+                yield ListView(id="review-list")
                 yield ButtonsContainer(
                     Select(
                         name="Hello?",
@@ -69,101 +78,139 @@ class EndoTree(App):
                             ("Nieważne i niepilne", "")
                         ]
                     ),
-                    Button("Dodaj do listy", classes=""),
-                    Button("Dodaj do projektu", classes=""),
-                    Button("Dodaj do przemyśleń", classes=""),
-                    Button("Usuń", classes=""),
+                    Button("Dodaj do listy"),
+                    Button("Dodaj do projektu"),
+                    Button("Dodaj do przemyśleń"),
+                    Button("Usuń"),
                 )
 
-            with TabPane("Projekty", id="projects"):
+            with TabPane("Projekty", id="projects_tab"):
                 yield Input(
                     placeholder="Co chcesz dodać?",
-                    id="add-project-input"
+                    id="projects-input"
                 )
                 yield HorizontalContainer(
-                    Tree("Projekty", id="projects-tree"),
-                    TextArea(id="projects-textarea")
+                    ProjectsTree("Projekty", id="projects-tree"),
+                    ProjectsTextArea(id="projects-textarea")
                 )
 
         yield Footer()
 
 
+    # PROPERTIES
+    @property
+    def inbox_input(self):
+        return self.query_one("#inbox-input", Input)
+
+    @property
+    def inbox_list(self):
+        return self.query_one("#inbox-list", InboxList)
+
+    @property
+    def review_list(self):
+        return self.query_one("#review-list", ListView)
+
+    @property
+    def projects_tree(self):
+        return self.query_one("#projects-tree", Tree)
+
+    @property
+    def projects_textarea(self):
+        return self.query_one("#projects-textarea", TextArea)
+
+
     # ON'S
     def on_mount(self) -> None:
-        # może lepiej dodać to w konstruktorze
+        # INIT
         self.data = JsonData(path="data.json")
 
-        self.query_one("#tasks-list", InboxList).refresh_items(self.data.data)
+        # INBOX_TAB
+        self.inbox_list.refresh_items(self.data.data)
 
-        # sekcja projekty
-        self.query_one("#projects-tree", Tree).root.expand()
+        # REVIEW_TAB
+
+
+        # PROJECTS_TAB
+        self.projects_tree.root.expand()
 
         for project in self.data.data["projects"]:
             id, name, content = project.values()
-            self.query_one("#projects-tree", Tree).root.add_leaf(
-                label=name
+            self.projects_tree.root.add_leaf(
+                label=name,
+                data={"id": id}
             )
 
     def on_key(self, event: events.Key):
-        if event.key == "escape":
-            quit()
+        if event.key == "escape": quit()
 
-    # Może dekorator zapisujący data do pliku po wykonaniu akcji
-    def on_input_submitted(self, input_submitted: Input.Submitted):
-        if not input_submitted.value: return
+    def on_input_submitted(self, event: Input.Submitted):
+        if not event.input.value: return
 
-        input_widget= input_submitted.input
-
-        if input_widget.id == "add-to-inbox-input":
-            new_label = ListItem(Label(input_submitted.value))
-
-            self.data.data["inbox"].append(input_submitted.value)
-            self.data.save()
-
-            self.query_one("#tasks-list", ListView).append(new_label)
-            input_widget.clear()
+        match event.input.id:
+            case "inbox-input":
+                self.handle_inbox_input_submit(event.input.value)
 
     @on(TabbedContent.TabActivated)
-    def display_inbox_item(self, event: TabbedContent.TabActivated):
-        if event.pane.id == "review":
-            self.query_one("#random-inbox-items", ListView).clear()
+    def switch_tabs(self, event: TabbedContent.TabActivated):
+        match event.pane.id:
+            case "inbox_tab":
+                pass
+            case "review_tab":
+                self.handle_review_tab_activation()
+            case "projects_tab":
+                pass
 
-            random_inbox_item_index = random.randrange(0, len(self.data.data["inbox"]))
-            random_inbox_item_text = self.data.data["inbox"][random_inbox_item_index]
-            random_inbox_element =  ListItem(Label(random_inbox_item_text))
+    @on(ProjectsTree.NodeSelected)
+    def update_textarea_content(self, event: ProjectsTree.NodeSelected):
+        project_id = event.node.data["id"]
+        project_content = self.data.data["projects"][project_id]["content"]
+        self.projects_textarea.text = project_content
 
-            self.query_one("#random-inbox-items", ListView).append(random_inbox_element)
-
-    def on_tree_node_selected(self, event: Tree.NodeSelected):
-        # HERE WE GO
-        text = self.data.data[event.node.id - 1]
-        self.query_one("#projects-textarea", TextArea).text = text
-
-    def on_textarea_selection_changed(self, event: TextArea.SelectionChanged):
-        current_node = self.query_one("#projects-tree", Tree).cursor_node
+    @on(ProjectsTextArea.SelectionChanged)
+    def update_project_content(self, event: TextArea.SelectionChanged):
+        current_node = self.projects_tree.cursor_node
         if current_node is not None:
-            current_node.data = self.data.data[current_node.id - 1]
+            project_id = current_node.data["id"]
+            self.data.data["projects"][project_id]["content"] = self.projects_textarea.text
+
+            self.data.save()
 
 
     # ACTION'S
     def action_add_task_to_inbox(self):
-        self.query_one("#add-to-inbox-input").focus()
-
-        list_items = self.query_one("#tasks-list", ListView)
-        highlighted_item = list_items.highlighted_child
-
+        self.inbox_input.focus()
+        highlighted_item = self.inbox_list.highlighted_child
         if highlighted_item is not None: highlighted_item.highlighted = False
 
     def action_delete_highlighted_task(self):
-        list_items = self.query_one("#tasks-list", ListView)
-        highlighted_item = list_items.highlighted_child
+        highlighted_item = self.inbox_list.highlighted_child
 
         if highlighted_item is not None:
             highlighted_item.remove()
+            highlighted_item_index = self.inbox_list.index
 
-            highlighted_item_index = list_items.index
             self.data.data["inbox"].pop(highlighted_item_index)
             self.data.save()
+
+
+    # HANDLERS
+    def handle_review_tab_activation(self):
+        self.review_list.clear()
+
+        random_inbox_item_index = random.randrange(0, len(self.data.data["inbox"]))
+        random_inbox_item_text = self.data.data["inbox"][random_inbox_item_index]
+        random_inbox_element =  ListItem(Label(random_inbox_item_text))
+
+        self.review_list.append(random_inbox_element)
+
+    def handle_inbox_input_submit(self, value):
+        new_label = ListItem(Label(value))
+
+        self.data.data["inbox"].append(value)
+        self.data.save()
+
+        self.inbox_list.append(new_label)
+        self.inbox_input.clear()
 
 
 if __name__ == "__main__":
