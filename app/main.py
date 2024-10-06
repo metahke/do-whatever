@@ -6,15 +6,23 @@ import json, random
 
 
 class JsonData():
-    @staticmethod
-    def load(path):
-        with open(path, "r", encoding="utf-8") as file:
+    def __init__(self, path):
+        self.path = path
+        self.data = self.load()
+
+    def load(self):
+        with open(self.path, "r", encoding="utf-8") as file:
             return json.load(file)
 
-    @staticmethod
-    def save(path, data):
-        with open(path, "w", encoding="utf-8") as file:
-            json.dump(data, file, ensure_ascii=False, indent=4)
+    def save(self):
+        with open(self.path, "w", encoding="utf-8") as file:
+            json.dump(self.data, file, ensure_ascii=False, indent=4)
+
+    def get(self, key):
+        return self.data[key]
+
+    def update(self, key, content):
+       self.data[key] = content
 
 
 class InboxList(ListView):
@@ -34,15 +42,6 @@ class HorizontalContainer(Horizontal):
 
 class EndoTree(App):
     CSS_PATH = "styles.tcss"
-
-    # BINDINGS_TYPE = {
-    #     "inbox": [
-    #         ("a", "add_task_to_inbox", "Display input"),
-    #         ("d", "delete_highlighted_task", "Delete highlighted task")
-    #     ],
-    #     "review": []
-    # }
-
     BINDINGS= [
         ("a", "add_task_to_inbox", "Display input"),
         ("d", "delete_highlighted_task", "Delete highlighted task")
@@ -77,19 +76,13 @@ class EndoTree(App):
                 )
 
             with TabPane("Projekty", id="projects"):
-                tree = Tree("Projekty")
-                tree.root.expand()
-                tree.root.add_leaf("Posprzątać kuchnię")
-                tree.root.add_leaf("Stworzyć alternatywę dla Obisidana")
-                tree.root.add_leaf("Pójść na zakupy")
-
                 yield Input(
                     placeholder="Co chcesz dodać?",
                     id="add-project-input"
                 )
                 yield HorizontalContainer(
-                    tree,
-                    TextArea("Hello world")
+                    Tree("Projekty", id="projects-tree"),
+                    TextArea(id="projects-textarea")
                 )
 
         yield Footer()
@@ -98,14 +91,22 @@ class EndoTree(App):
     # ON'S
     def on_mount(self) -> None:
         # może lepiej dodać to w konstruktorze
-        self.data = JsonData.load(path="data.json")
+        self.data = JsonData(path="data.json")
 
-        self.query_one("#tasks-list", InboxList).refresh_items(self.data)
+        self.query_one("#tasks-list", InboxList).refresh_items(self.data.data)
+
+        # sekcja projekty
+        self.query_one("#projects-tree", Tree).root.expand()
+
+        for project in self.data.data["projects"]:
+            id, name, content = project.values()
+            self.query_one("#projects-tree", Tree).root.add_leaf(
+                label=name
+            )
 
     def on_key(self, event: events.Key):
         if event.key == "escape":
             quit()
-
 
     # Może dekorator zapisujący data do pliku po wykonaniu akcji
     def on_input_submitted(self, input_submitted: Input.Submitted):
@@ -116,8 +117,8 @@ class EndoTree(App):
         if input_widget.id == "add-to-inbox-input":
             new_label = ListItem(Label(input_submitted.value))
 
-            self.data["inbox"].append(input_submitted.value)
-            JsonData.save(path="data.json", data=self.data)
+            self.data.data["inbox"].append(input_submitted.value)
+            self.data.save()
 
             self.query_one("#tasks-list", ListView).append(new_label)
             input_widget.clear()
@@ -127,11 +128,21 @@ class EndoTree(App):
         if event.pane.id == "review":
             self.query_one("#random-inbox-items", ListView).clear()
 
-            random_inbox_item_index = random.randrange(0, len(self.data["inbox"]))
-            random_inbox_item_text = self.data["inbox"][random_inbox_item_index]
+            random_inbox_item_index = random.randrange(0, len(self.data.data["inbox"]))
+            random_inbox_item_text = self.data.data["inbox"][random_inbox_item_index]
             random_inbox_element =  ListItem(Label(random_inbox_item_text))
 
             self.query_one("#random-inbox-items", ListView).append(random_inbox_element)
+
+    def on_tree_node_selected(self, event: Tree.NodeSelected):
+        # HERE WE GO
+        text = self.data.data[event.node.id - 1]
+        self.query_one("#projects-textarea", TextArea).text = text
+
+    def on_textarea_selection_changed(self, event: TextArea.SelectionChanged):
+        current_node = self.query_one("#projects-tree", Tree).cursor_node
+        if current_node is not None:
+            current_node.data = self.data.data[current_node.id - 1]
 
 
     # ACTION'S
@@ -151,8 +162,8 @@ class EndoTree(App):
             highlighted_item.remove()
 
             highlighted_item_index = list_items.index
-            self.data["inbox"].pop(highlighted_item_index)
-            JsonData.save(path="data.json", data=self.data)
+            self.data.data["inbox"].pop(highlighted_item_index)
+            self.data.save()
 
 
 if __name__ == "__main__":
