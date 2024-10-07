@@ -2,50 +2,9 @@ from textual.app import App, ComposeResult
 from textual import events, on
 from textual.containers import *
 from textual.widgets import *
-import json, random
-
-
-class JsonData():
-    def __init__(self, path):
-        self.path = path
-        self.data = self.load()
-
-    def load(self):
-        with open(self.path, "r", encoding="utf-8") as file:
-            return json.load(file)
-
-    def save(self):
-        with open(self.path, "w", encoding="utf-8") as file:
-            json.dump(self.data, file, ensure_ascii=False, indent=4)
-
-    def get(self, key):
-        return self.data[key]
-
-    def update(self, key, content):
-       self.data[key] = content
-
-
-class InboxList(ListView):
-    def refresh_items(self, data):
-        for list_item_text in data["inbox"]:
-            list_item = ListItem(Label(list_item_text))
-            self.append(list_item)
-
-
-class ButtonsContainer(Horizontal):
-    pass
-
-
-class HorizontalContainer(Horizontal):
-    pass
-
-
-class ProjectsTree(Tree):
-    pass
-
-
-class ProjectsTextArea(TextArea):
-    pass
+from classes.textual import *
+from classes.jsondata import JsonData
+import random
 
 
 class EndoTree(App):
@@ -57,14 +16,7 @@ class EndoTree(App):
     ]
 
     def compose(self) -> ComposeResult:
-        with TabbedContent(initial="projects_tab"):
-            with TabPane("Nieprzetworzone zadania", id="inbox_tab"):
-                yield Input(
-                    placeholder="Co chcesz dodać?",
-                    id="inbox-input"
-                )
-                yield InboxList(id="inbox-list")
-
+        with TabbedContent(initial="inbox_tab"):
             with TabPane("Przegląd", id="review_tab", disabled=True):
                 yield Label("Automatycznie wylosowany element listy inbox:")
                 yield ListView(id="review-list")
@@ -84,14 +36,24 @@ class EndoTree(App):
                     Button("Usuń"),
                 )
 
-            with TabPane("Projekty", id="projects_tab"):
+            with TabPane("Nieprzetworzone zadania", id="inbox_tab"):
+                    yield Input(
+                        placeholder="Co chcesz dodać?",
+                        id="inbox-input"
+                    )
+                    yield InboxList(id="inbox-list")
+
+            with TabPane("Projekty", id="projects_tab", disabled=True):
+                pass
+
+            with TabPane("Notatki", id="notes_tab"):
                 yield Input(
                     placeholder="Co chcesz dodać?",
-                    id="projects-input"
+                    id="notes-input"
                 )
                 yield HorizontalContainer(
-                    ProjectsTree("Projekty", id="projects-tree"),
-                    ProjectsTextArea(id="projects-textarea")
+                    NotesTree("Notatki", id="notes-tree"),
+                    NotesTextArea(id="notes-textarea")
                 )
 
         yield Footer()
@@ -99,24 +61,24 @@ class EndoTree(App):
 
     # PROPERTIES
     @property
-    def inbox_input(self):
+    def inbox_input(self) -> Input:
         return self.query_one("#inbox-input", Input)
 
     @property
-    def inbox_list(self):
+    def inbox_list(self) -> InboxList:
         return self.query_one("#inbox-list", InboxList)
 
     @property
-    def review_list(self):
+    def review_list(self) -> ListView:
         return self.query_one("#review-list", ListView)
 
     @property
-    def projects_tree(self):
-        return self.query_one("#projects-tree", Tree)
+    def notes_tree(self) -> NotesTree:
+        return self.query_one("#notes-tree", NotesTree)
 
     @property
-    def projects_textarea(self):
-        return self.query_one("#projects-textarea", TextArea)
+    def notes_textarea(self) -> NotesTextArea:
+        return self.query_one("#notes-textarea", NotesTextArea)
 
 
     # ON'S
@@ -131,11 +93,14 @@ class EndoTree(App):
 
 
         # PROJECTS_TAB
-        self.projects_tree.root.expand()
 
-        for project in self.data.data["projects"]:
-            id, name, content = project.values()
-            self.projects_tree.root.add_leaf(
+
+        # NOTES_TAB
+        self.notes_tree.root.expand()
+
+        for note in self.data.data["notes"]:
+            id, name, content = note.values()
+            self.notes_tree.root.add_leaf(
                 label=name,
                 data={"id": id}
             )
@@ -159,19 +124,21 @@ class EndoTree(App):
                 self.handle_review_tab_activation()
             case "projects_tab":
                 pass
+            case "notes_tab":
+                pass
 
-    @on(ProjectsTree.NodeSelected)
-    def update_textarea_content(self, event: ProjectsTree.NodeSelected):
-        project_id = event.node.data["id"]
-        project_content = self.data.data["projects"][project_id]["content"]
-        self.projects_textarea.text = project_content
+    @on(NotesTree.NodeSelected)
+    def update_textarea_content(self, event: NotesTree.NodeSelected):
+        note_id = event.node.data["id"]
+        note_content = self.data.data["notes"][note_id]["content"]
+        self.notes_textarea.text = note_content
 
-    @on(ProjectsTextArea.SelectionChanged)
-    def update_project_content(self, event: TextArea.SelectionChanged):
-        current_node = self.projects_tree.cursor_node
+    @on(NotesTextArea.SelectionChanged)
+    def update_note_content(self, event: TextArea.SelectionChanged):
+        current_node = self.notes_tree.cursor_node
         if current_node is not None:
-            project_id = current_node.data["id"]
-            self.data.data["projects"][project_id]["content"] = self.projects_textarea.text
+            note_id = current_node.data["id"]
+            self.data.data["notes"][note_id]["content"] = self.notes_textarea.text
 
             self.data.save()
 
@@ -204,6 +171,9 @@ class EndoTree(App):
         self.review_list.append(random_inbox_element)
 
     def handle_inbox_input_submit(self, value):
+        # get_value()
+        # save_value()
+        # list_value()
         new_label = ListItem(Label(value))
 
         self.data.data["inbox"].append(value)

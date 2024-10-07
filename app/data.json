@@ -1,8 +1,9 @@
 {
     "inbox": [
-        "Zrobić rzecz 3"
+        "zamówić zupy z allegro",
+        "zamówić pasek do spodni"
     ],
-    "projects": [
+    "notes": [
         {
             "id": 0,
             "name": "Posprzątać kuchnię",
@@ -11,7 +12,7 @@
         {
             "id": 1,
             "name": "Pójść na zakupy",
-            "content": "Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt."
+            "content": "Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesci\n\n\n\nunt.aasd"
         }
     ]
 }
