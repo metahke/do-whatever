@@ -12,7 +12,8 @@ class EndoTree(App):
     CSS_PATH = "styles.tcss"
     BINDINGS= [
         ("a", "add_task_to_inbox", "Display input"),
-        ("d", "delete_highlighted_task", "Delete highlighted task")
+        ("d", "delete_highlighted_task", "Delete highlighted task"),
+        ("e", "edit_inbox_element", "Edit inbox element")
     ]
 
     def compose(self) -> ComposeResult:
@@ -147,7 +148,9 @@ class EndoTree(App):
     def action_add_task_to_inbox(self):
         self.inbox_input.focus()
         highlighted_item = self.inbox_list.highlighted_child
-        if highlighted_item is not None: highlighted_item.highlighted = False
+
+        if highlighted_item is not None:
+            highlighted_item.highlighted = False
 
     def action_delete_highlighted_task(self):
         highlighted_item = self.inbox_list.highlighted_child
@@ -158,6 +161,21 @@ class EndoTree(App):
 
             self.data.data["inbox"].pop(highlighted_item_index)
             self.data.save()
+
+    def action_edit_inbox_element(self):
+        highlighted_item = self.inbox_list.highlighted_child
+
+        if highlighted_item is not None:
+            highlighted_item.remove()
+            highlighted_item_index = self.inbox_list.index
+
+            text = self.data.data["inbox"][highlighted_item_index]
+            self.inbox_input.value = text
+            self.inbox_input.focus()
+
+            self.data.data["inbox"].pop(highlighted_item_index)
+            self.data.save()
+
 
 
     # HANDLERS
