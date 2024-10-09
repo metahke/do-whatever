@@ -1,11 +1,27 @@
-from textual.widgets import ListView, ListItem, Label, Tree, TextArea
+from textual.widgets import ListView, ListItem, Label, Tree, TextArea, Input, TabPane
 from textual.containers import Horizontal
+import random
 
 class InboxList(ListView):
     def refresh_items(self, data):
-        for list_item_text in data["inbox"]:
+        self.clear()
+        for list_item_text in data:
             list_item = ListItem(Label(list_item_text))
             self.append(list_item)
+
+
+class ReviewList(ListView):
+    def show_random_item(self, data):
+        self.clear()
+
+        random_inbox_item_index = random.randrange(0, len(data))
+        random_inbox_item_text = data[random_inbox_item_index]
+        random_inbox_element =  ListItem(Label(random_inbox_item_text))
+
+        self.append(random_inbox_element)
+
+
+
 
 
 class ButtonsContainer(Horizontal):
@@ -17,8 +33,23 @@ class HorizontalContainer(Horizontal):
 
 
 class NotesTree(Tree):
-    pass
+    def refresh_notes(self, notes_data):
+        self.clear()
+        for note in notes_data:
+            id, name, content = note.values()
+            self.root.add_leaf(
+                label=name,
+                data={"id": id}
+            )
 
 
 class NotesTextArea(TextArea):
+    pass
+
+
+class InboxInput(Input):
+    pass
+
+
+class NotesInput(Input):
     pass

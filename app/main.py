@@ -1,26 +1,26 @@
-from textual.app import App, ComposeResult
 from textual import events, on
-from textual.containers import *
+from textual.app import App, ComposeResult
 from textual.widgets import *
+from textual.containers import *
+
 from classes.textual import *
 from classes.jsondata import JsonData
-import random
 
 
 class EndoTree(App):
     # INIT
     CSS_PATH = "styles.tcss"
-    BINDINGS= [
-        ("a", "add_task_to_inbox", "Display input"),
-        ("d", "delete_highlighted_task", "Delete highlighted task"),
-        ("e", "edit_inbox_element", "Edit inbox element")
+    BINDINGS = [
+        ("a", "add_task_to_inbox", "add to input"),
+        ("d", "delete_highlighted_task", "delete highlighted"),
+        ("e", "edit_inbox_element", "edit inbox element")
     ]
 
     def compose(self) -> ComposeResult:
-        with TabbedContent(initial="inbox_tab"):
+        with TabbedContent(initial="notes_tab"):
             with TabPane("Przegląd", id="review_tab", disabled=True):
                 yield Label("Automatycznie wylosowany element listy inbox:")
-                yield ListView(id="review-list")
+                yield ReviewList(id="review-list")
                 yield ButtonsContainer(
                     Select(
                         name="Hello?",
@@ -38,7 +38,7 @@ class EndoTree(App):
                 )
 
             with TabPane("Nieprzetworzone zadania", id="inbox_tab"):
-                    yield Input(
+                    yield InboxInput(
                         placeholder="Co chcesz dodać?",
                         id="inbox-input"
                     )
@@ -53,7 +53,7 @@ class EndoTree(App):
                     id="notes-input"
                 )
                 yield HorizontalContainer(
-                    NotesTree("Notatki", id="notes-tree"),
+                    NotesTree("Notatki", id="notes-tree", data={}),
                     NotesTextArea(id="notes-textarea")
                 )
 
@@ -62,16 +62,16 @@ class EndoTree(App):
 
     # PROPERTIES
     @property
-    def inbox_input(self) -> Input:
-        return self.query_one("#inbox-input", Input)
+    def inbox_input(self) -> InboxInput:
+        return self.query_one("#inbox-input", InboxInput)
 
     @property
     def inbox_list(self) -> InboxList:
         return self.query_one("#inbox-list", InboxList)
 
     @property
-    def review_list(self) -> ListView:
-        return self.query_one("#review-list", ListView)
+    def review_list(self) -> ReviewList:
+        return self.query_one("#review-list", ReviewList)
 
     @property
     def notes_tree(self) -> NotesTree:
@@ -83,56 +83,51 @@ class EndoTree(App):
 
 
     # ON'S
-    def on_mount(self) -> None:
-        # INIT
+    @on(events.Mount)
+    def initialize_app_data(self):
         self.data = JsonData(path="data.json")
+        self.inbox_item_being_edited = None
 
-        # INBOX_TAB
-        self.inbox_list.refresh_items(self.data.data)
-
-        # REVIEW_TAB
-
-
-        # PROJECTS_TAB
-
-
-        # NOTES_TAB
+    @on(events.Mount)
+    def expand_notes_tree(self):
         self.notes_tree.root.expand()
 
-        for note in self.data.data["notes"]:
-            id, name, content = note.values()
-            self.notes_tree.root.add_leaf(
-                label=name,
-                data={"id": id}
-            )
-
-    def on_key(self, event: events.Key):
+    @on(events.Key)
+    def quit_app(self, event: events.Key):
         if event.key == "escape": quit()
 
-    def on_input_submitted(self, event: Input.Submitted):
-        if not event.input.value: return
+    @on(InboxInput.Submitted)
+    def handle_inbox_input_submit(self):
+        if self.inbox_input.value == "": return
 
-        match event.input.id:
-            case "inbox-input":
-                self.handle_inbox_input_submit(event.input.value)
+        self.data.data["inbox"].append(self.inbox_input.value)
+        self.data.save()
+
+        self.inbox_input.clear()
+        self.inbox_list.refresh_items(self.data.data["inbox"])
+
+    @on(NotesInput.Submitted)
+    def handle_notes_input_submit(self):
+        pass
 
     @on(TabbedContent.TabActivated)
     def switch_tabs(self, event: TabbedContent.TabActivated):
         match event.pane.id:
             case "inbox_tab":
-                pass
+                self.inbox_list.refresh_items(self.data.data["inbox"])
             case "review_tab":
-                self.handle_review_tab_activation()
+                self.review_list.show_random_item(self.data.data["inbox"])
             case "projects_tab":
                 pass
             case "notes_tab":
-                pass
+                self.notes_tree.refresh_notes(self.data.data["notes"])
 
     @on(NotesTree.NodeSelected)
     def update_textarea_content(self, event: NotesTree.NodeSelected):
-        note_id = event.node.data["id"]
-        note_content = self.data.data["notes"][note_id]["content"]
-        self.notes_textarea.text = note_content
+        if event.node.data.get("id") is not None:
+            note_id = event.node.data["id"]
+            note_content = self.data.data["notes"][note_id]["content"]
+            self.notes_textarea.text = note_content
 
     @on(NotesTextArea.SelectionChanged)
     def update_note_content(self, event: TextArea.SelectionChanged):
@@ -153,52 +148,31 @@ class EndoTree(App):
             highlighted_item.highlighted = False
 
     def action_delete_highlighted_task(self):
-        highlighted_item = self.inbox_list.highlighted_child
+        if self.inbox_list.highlighted_child is None: return
 
-        if highlighted_item is not None:
-            highlighted_item.remove()
-            highlighted_item_index = self.inbox_list.index
-
-            self.data.data["inbox"].pop(highlighted_item_index)
-            self.data.save()
-
-    def action_edit_inbox_element(self):
-        highlighted_item = self.inbox_list.highlighted_child
-
-        if highlighted_item is not None:
-            highlighted_item.remove()
-            highlighted_item_index = self.inbox_list.index
-
-            text = self.data.data["inbox"][highlighted_item_index]
-            self.inbox_input.value = text
-            self.inbox_input.focus()
-
-            self.data.data["inbox"].pop(highlighted_item_index)
-            self.data.save()
-
-
-
-    # HANDLERS
-    def handle_review_tab_activation(self):
-        self.review_list.clear()
-
-        random_inbox_item_index = random.randrange(0, len(self.data.data["inbox"]))
-        random_inbox_item_text = self.data.data["inbox"][random_inbox_item_index]
-        random_inbox_element =  ListItem(Label(random_inbox_item_text))
-
-        self.review_list.append(random_inbox_element)
-
-    def handle_inbox_input_submit(self, value):
-        # get_value()
-        # save_value()
-        # list_value()
-        new_label = ListItem(Label(value))
-
-        self.data.data["inbox"].append(value)
+        highlighted_item_index = self.inbox_list.index
+        self.data.data["inbox"].pop(highlighted_item_index)
         self.data.save()
 
-        self.inbox_list.append(new_label)
-        self.inbox_input.clear()
+        self.inbox_list.refresh_items(self.data.data["inbox"])
+
+    def action_edit_inbox_element(self):
+        if self.inbox_list.highlighted_child is None: return
+
+        highlighted_item_index = self.inbox_list.index
+
+        text = self.data.data["inbox"][highlighted_item_index]
+        self.inbox_input.value = text
+
+        self.data.data["inbox"].pop(highlighted_item_index)
+        self.inbox_list.highlighted_child.remove()
+
+        self.inbox_input.focus()
+
+        self.inbox_item_being_edited = highlighted_item_index
+
+    def action_quit(self):
+        quit()
 
 
 if __name__ == "__main__":

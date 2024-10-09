@@ -7,6 +7,11 @@ EndoTree {
     display: none;
 }
 
+.test {
+    background: green;
+    color: white;
+}
+
 ListItem {
     padding: 1;
     margin: 1;
