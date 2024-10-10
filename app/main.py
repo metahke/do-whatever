@@ -48,7 +48,7 @@ class EndoTree(App):
                 pass
 
             with TabPane("Notatki", id="notes_tab"):
-                yield Input(
+                yield NotesInput(
                     placeholder="Co chcesz dodać?",
                     id="notes-input"
                 )
@@ -64,6 +64,10 @@ class EndoTree(App):
     @property
     def inbox_input(self) -> InboxInput:
         return self.query_one("#inbox-input", InboxInput)
+
+    @property
+    def notes_input(self) -> NotesInput:
+        return self.query_one("#notes-input", NotesInput)
 
     @property
     def inbox_list(self) -> InboxList:
@@ -108,7 +112,21 @@ class EndoTree(App):
 
     @on(NotesInput.Submitted)
     def handle_notes_input_submit(self):
-        pass
+        if self.notes_input.value == "": return
+
+        new_note_index = max(note["id"] for note in self.data.data["notes"]) + 1
+        new_note = {
+            "id": new_note_index,
+            "name": self.notes_input.value,
+            "content": ""
+        }
+
+        self.data.data["notes"].append(new_note)
+        self.data.save()
+
+        self.notes_input.clear()
+        self.notes_tree.refresh_notes(self.data.data["notes"])
+
 
     @on(TabbedContent.TabActivated)
     def switch_tabs(self, event: TabbedContent.TabActivated):
