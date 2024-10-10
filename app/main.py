@@ -10,11 +10,6 @@ from classes.jsondata import JsonData
 class EndoTree(App):
     # INIT
     CSS_PATH = "styles.tcss"
-    BINDINGS = [
-        ("a", "add_task_to_inbox", "add to input"),
-        ("d", "delete_highlighted_task", "delete highlighted"),
-        ("e", "edit_inbox_element", "edit inbox element")
-    ]
 
     def compose(self) -> ComposeResult:
         with TabbedContent(initial="notes_tab"):
@@ -133,18 +128,25 @@ class EndoTree(App):
         match event.pane.id:
             case "inbox_tab":
                 self.inbox_list.refresh_items(self.data.data["inbox"])
+                self.inbox_list.focus()
             case "review_tab":
                 self.review_list.show_random_item(self.data.data["inbox"])
             case "projects_tab":
                 pass
             case "notes_tab":
                 self.notes_tree.refresh_notes(self.data.data["notes"])
+                self.notes_tree.focus()
 
     @on(NotesTree.NodeSelected)
     def update_textarea_content(self, event: NotesTree.NodeSelected):
         if event.node.data.get("id") is not None:
             note_id = event.node.data["id"]
-            note_content = self.data.data["notes"][note_id]["content"]
+
+            note_content = ""
+            for note in self.data.data["notes"]:
+                if note["id"] == note_id:
+                    note_content = note["content"]
+
             self.notes_textarea.text = note_content
 
     @on(NotesTextArea.SelectionChanged)
@@ -152,7 +154,10 @@ class EndoTree(App):
         current_node = self.notes_tree.cursor_node
         if current_node is not None:
             note_id = current_node.data["id"]
-            self.data.data["notes"][note_id]["content"] = self.notes_textarea.text
+
+            for note in self.data.data["notes"]:
+                if note["id"] == note_id:
+                    note["content"] = self.notes_textarea.text
 
             self.data.save()
 
@@ -189,8 +194,21 @@ class EndoTree(App):
 
         self.inbox_item_being_edited = highlighted_item_index
 
-    def action_quit(self):
-        quit()
+    def action_add_note_to_tree(self):
+        self.notes_input.focus()
+
+    def action_delete_highlighted_note(self):
+        current_note = self.notes_tree.cursor_node
+        if current_note is None or current_note.is_root: return
+
+        note_id = current_note.data["id"]
+
+        for note_index, note in enumerate(self.data.data["notes"]):
+            if note["id"] == note_id:
+                self.data.data["notes"].pop(note_index)
+                self.data.save()
+
+        self.notes_tree.refresh_notes(self.data.data["notes"])
 
 
 if __name__ == "__main__":

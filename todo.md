@@ -1,8 +1,12 @@
 ## Funkcjonalności
 
 ### Następne
+- dodać opcję dodawania, usuwania i edytowania rzeczy bazując na wybranym,
+aktywnym node, np. if "a" and TabPane.Node.Selected: ...
 
 ### Ogólne
+- przemiana, np. TabPane na klasy, w których są wyświetlane odpowiednie
+komponenty, i w tych klasach TabPane zawierać się będą odp. BINDINGS
 - poprawić zarządzanie danymi (aktualizacja, otrzymywanie kluczy,
 np. "self.data.data["projects"])
 - lepsza aranżacja data.json -> może baza?
