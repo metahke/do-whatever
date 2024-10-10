@@ -49,7 +49,11 @@ class EndoTree(App):
                 )
                 yield HorizontalContainer(
                     NotesTree("Notatki", id="notes-tree", data={}),
-                    NotesTextArea(id="notes-textarea")
+                    Vertical(
+                        NotesTextAreaHeader(id="notes-textarea-header"),
+                        NotesTextArea(id="notes-textarea")
+                    )
+
                 )
 
         yield Footer()
@@ -79,6 +83,11 @@ class EndoTree(App):
     @property
     def notes_textarea(self) -> NotesTextArea:
         return self.query_one("#notes-textarea", NotesTextArea)
+
+
+    @property
+    def notes_textarea_header(self) -> NotesTextAreaHeader:
+        return self.query_one("#notes-textarea-header", NotesTextAreaHeader)
 
 
     # ON'S
@@ -139,15 +148,18 @@ class EndoTree(App):
 
     @on(NotesTree.NodeSelected)
     def update_textarea_content(self, event: NotesTree.NodeSelected):
-        if event.node.data.get("id") is not None:
-            note_id = event.node.data["id"]
+        if event.node.data.get("id") is None: return
 
-            note_content = ""
-            for note in self.data.data["notes"]:
-                if note["id"] == note_id:
-                    note_content = note["content"]
+        note_id = event.node.data["id"]
 
-            self.notes_textarea.text = note_content
+        note_content, note_name = "", ""
+        for note in self.data.data["notes"]:
+            if note["id"] == note_id:
+                note_name = note["name"]
+                note_content = note["content"]
+
+        self.notes_textarea_header.load_text(note_name)
+        self.notes_textarea.load_text(note_content)
 
     @on(NotesTextArea.SelectionChanged)
     def update_note_content(self, event: TextArea.SelectionChanged):
@@ -160,6 +172,27 @@ class EndoTree(App):
                     note["content"] = self.notes_textarea.text
 
             self.data.save()
+
+    @on(NotesTextAreaHeader.SelectionChanged)
+    def limit_noted_textarea_content(self):
+        if self.notes_textarea_header.text == "": return
+
+        if len(self.notes_textarea_header.text) > 30:
+            self.notes_textarea_header.text = self.notes_textarea_header.text[:20]
+            self.notes_textarea_header.action_cursor_line_end()
+
+        current_node = self.notes_tree.cursor_node
+        if current_node is not None:
+            note_id = current_node.data["id"]
+
+            for note in self.data.data["notes"]:
+                if note["id"] == note_id:
+                    current_node.label = self.notes_textarea_header.text
+                    note["name"] = self.notes_textarea_header.text
+
+            self.data.save()
+
+            self.notes_tree.refresh()
 
 
     # ACTION'S

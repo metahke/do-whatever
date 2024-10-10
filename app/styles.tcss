@@ -7,11 +7,6 @@ EndoTree {
     display: none;
 }
 
-.test {
-    background: green;
-    color: white;
-}
-
 ListItem {
     padding: 1;
     margin: 1;
@@ -25,9 +20,11 @@ ButtonsContainer {
     max-height: 5;
 }
 
-HorizontalContainer
-
 ButtonsContainer Button {
     width: 1fr;
     margin: 1;
+}
+
+NotesTextAreaHeader {
+    height: 3;
 }

@@ -55,6 +55,10 @@ class NotesTextArea(TextArea):
     pass
 
 
+class NotesTextAreaHeader(TextArea):
+    pass
+
+
 class InboxInput(Input):
     pass
 
