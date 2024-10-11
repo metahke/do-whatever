@@ -9,6 +9,9 @@ from classes.jsondata import JsonData
 
 class EndoTree(App):
     # INIT
+    BINDINGS = [
+        ("escape", "exit_app", "exit app")
+    ]
     CSS_PATH = "styles.tcss"
 
     def compose(self) -> ComposeResult:
@@ -84,54 +87,23 @@ class EndoTree(App):
     def notes_textarea(self) -> NotesTextArea:
         return self.query_one("#notes-textarea", NotesTextArea)
 
-
     @property
     def notes_textarea_header(self) -> NotesTextAreaHeader:
         return self.query_one("#notes-textarea-header", NotesTextAreaHeader)
 
 
     # ON'S
+
+    ## MOUNT
     @on(events.Mount)
     def initialize_app_data(self):
         self.data = JsonData(path="data.json")
-        self.inbox_item_being_edited = None
 
     @on(events.Mount)
     def expand_notes_tree(self):
         self.notes_tree.root.expand()
 
-    @on(events.Key)
-    def quit_app(self, event: events.Key):
-        if event.key == "escape": quit()
-
-    @on(InboxInput.Submitted)
-    def handle_inbox_input_submit(self):
-        if self.inbox_input.value == "": return
-
-        self.data.data["inbox"].append(self.inbox_input.value)
-        self.data.save()
-
-        self.inbox_input.clear()
-        self.inbox_list.refresh_items(self.data.data["inbox"])
-
-    @on(NotesInput.Submitted)
-    def handle_notes_input_submit(self):
-        if self.notes_input.value == "": return
-
-        new_note_index = max(note["id"] for note in self.data.data["notes"]) + 1
-        new_note = {
-            "id": new_note_index,
-            "name": self.notes_input.value,
-            "content": ""
-        }
-
-        self.data.data["notes"].append(new_note)
-        self.data.save()
-
-        self.notes_input.clear()
-        self.notes_tree.refresh_notes(self.data.data["notes"])
-
-
+    ## TABS
     @on(TabbedContent.TabActivated)
     def switch_tabs(self, event: TabbedContent.TabActivated):
         match event.pane.id:
@@ -145,6 +117,36 @@ class EndoTree(App):
             case "notes_tab":
                 self.notes_tree.refresh_notes(self.data.data["notes"])
                 self.notes_tree.focus()
+
+    ## INBOX TAB
+    @on(InboxInput.Submitted)
+    def handle_inbox_input_submit(self):
+        if self.inbox_input.value == "": return
+
+        self.data.add("inbox", self.inbox_input.value)
+        self.data.save()
+
+        self.inbox_input.clear()
+        self.inbox_list.refresh_items(self.data.get("inbox"))
+
+    ## NOTES TAB
+    @on(NotesInput.Submitted)
+    def handle_notes_input_submit(self):
+        if self.notes_input.value == "": return
+
+        # lepiej się sprawdzi baza danych, poniższe będzie zbędne
+        new_note_index = max(note["id"] for note in self.data.data["notes"]) + 1
+        new_note = {
+            "id": new_note_index,
+            "name": self.notes_input.value,
+            "content": ""
+        }
+
+        self.data.add("notes", new_note)
+        self.data.save()
+
+        self.notes_input.clear()
+        self.notes_tree.refresh_notes(self.data.get("notes"))
 
     @on(NotesTree.NodeSelected)
     def update_textarea_content(self, event: NotesTree.NodeSelected):
@@ -196,6 +198,9 @@ class EndoTree(App):
 
 
     # ACTION'S
+    def action_exit_app(self):
+        self.exit()
+
     def action_add_task_to_inbox(self):
         self.inbox_input.focus()
         highlighted_item = self.inbox_list.highlighted_child
@@ -210,22 +215,20 @@ class EndoTree(App):
         self.data.data["inbox"].pop(highlighted_item_index)
         self.data.save()
 
-        self.inbox_list.refresh_items(self.data.data["inbox"])
+        self.inbox_list.refresh_items(self.data.get("inbox"))
 
     def action_edit_inbox_element(self):
         if self.inbox_list.highlighted_child is None: return
 
         highlighted_item_index = self.inbox_list.index
 
-        text = self.data.data["inbox"][highlighted_item_index]
+        text = self.data.get("inbox")[highlighted_item_index]
         self.inbox_input.value = text
 
         self.data.data["inbox"].pop(highlighted_item_index)
         self.inbox_list.highlighted_child.remove()
 
         self.inbox_input.focus()
-
-        self.inbox_item_being_edited = highlighted_item_index
 
     def action_add_note_to_tree(self):
         self.notes_input.focus()

@@ -17,5 +17,5 @@ class JsonData():
     def get(self, key):
         return self.data[key]
 
-    def update(self, key, content):
-       self.data[key] = content
+    def add(self, key, value):
+        self.data[key].append(value)

@@ -1,18 +1,20 @@
 {
     "inbox": [
-        "hello world1",
-        "hlol",
-        "lol"
+        "1",
+        "2",
+        "3",
+        "4",
+        "5"
     ],
     "notes": [
         {
             "id": 0,
-            "name": "Posprzątać kuchnięae",
+            "name": "Moja pierwsza notatka",
             "content": "Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo."
         },
         {
             "id": 1,
-            "name": "Pójść na zakupę",
+            "name": "Moja druga notatka",
             "content": "Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesci."
         }
     ]
